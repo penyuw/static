@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Veo 3 Static Camera</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  <meta name="robots" content="noindex">
+    <style>
+        /* Custom Toast Animation */
+        .toast-enter {
+            opacity: 0;
+            transform: translateY(1rem);
+        }
+        .toast-enter-active {
+            opacity: 1;
+            transform: translateY(0);
+            transition: all 300ms ease-out;
+        }
+        .toast-exit {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .toast-exit-active {
+            opacity: 0;
+            transform: translateY(1rem);
+            transition: all 300ms ease-in;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col p-4 md:p-8">
+
+    <div class="max-w-4xl mx-auto w-full bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex-grow flex flex-col">
+        <!-- Header -->
+        <div class="bg-slate-800 text-white p-6">
+            <h1 class="text-2xl font-bold flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+                Veo 3 Static Prompt Converter
+            </h1>
+            <p class="text-slate-300 mt-2 text-sm">Otomatis mengubah prompt standar menjadi prompt wawancara statis tanpa pergerakan kamera.</p>
+        </div>
+
+        <!-- Main Content -->
+        <div class="p-6 flex flex-col gap-6">
+            
+            <!-- Input Area -->
+            <div class="flex flex-col gap-2">
+                <label for="inputPrompt" class="font-semibold text-slate-700">Paste Prompt Asli Anda Di Sini:</label>
+                <textarea id="inputPrompt" rows="6" class="w-full p-4 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none resize-y" placeholder="Contoh: Cinematic, 4k, highly detailed, realistic lighting..."></textarea>
+            </div>
+
+            <!-- Action Button -->
+            <div class="flex justify-center">
+                <button onclick="convertPrompt()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-full shadow-md hover:shadow-lg transition-all flex items-center gap-2 active:scale-95">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/></svg>
+                    Convert
+                </button>
+            </div>
+
+            <!-- Output Area -->
+            <div class="flex flex-col gap-2">
+                <div class="flex justify-between items-end">
+                    <label for="outputPrompt" class="font-semibold text-slate-700">Prompt Siap Pakai (Optimized):</label>
+                    <button onclick="copyToClipboard()" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-4 rounded-lg flex items-center gap-2 transition-colors border border-slate-300">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                        Copy Text
+                    </button>
+                </div>
+                <textarea id="outputPrompt" rows="8" class="w-full p-4 border border-blue-200 bg-blue-50 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none resize-y text-slate-800" placeholder="Hasil konversi akan muncul di sini..." readonly></textarea>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-8 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-xl font-medium flex items-center gap-2 pointer-events-none opacity-0 transition-opacity duration-300">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        Teks berhasil di-copy!
+    </div>
+
+    <script>
+        function convertPrompt() {
+            const inputEl = document.getElementById('inputPrompt');
+            const outputEl = document.getElementById('outputPrompt');
+            let text = inputEl.value;
+
+            if (!text.trim()) {
+                alert("Silakan masukkan teks prompt terlebih dahulu."); // Keep as simple fallback if empty, though custom modal is preferred. Using standard alert here for empty check is acceptable, but let's use the output box instead.
+                outputEl.value = "Peringatan: Kolom input kosong. Silakan paste prompt Anda terlebih dahulu.";
+                outputEl.classList.add('border-red-400', 'bg-red-50', 'text-red-600');
+                setTimeout(() => {
+                    outputEl.classList.remove('border-red-400', 'bg-red-50', 'text-red-600');
+                    if(outputEl.value.includes("Peringatan:")) outputEl.value = "";
+                }, 3000);
+                return;
+            }
+
+            // --- PROSES KONVERSI LOGIC ---
+
+            // 1. Hapus kata "Cinematic," di awal jika ada (case insensitive)
+            text = text.replace(/Cinematic,\s*/gi, '');
+
+            // 2. Tambahkan prefix Static Tripod di awal (jika belum ada)
+            if (!/Static tripod shot/i.test(text)) {
+                text = "Static tripod shot, Fixed camera angle, " + text;
+            }
+
+            // 3. Tambahkan "no camera movement" setelah frasa "Photorealistic natural documentary interview still"
+            if (/Photorealistic natural documentary interview still,/i.test(text) && !/no camera movement/i.test(text)) {
+                text = text.replace(/(Photorealistic natural documentary interview still,)/i, '$1 no camera movement,');
+            }
+
+            // 4. Ubah parameter CAMERA di bagian bawah
+            if (/CAMERA:/i.test(text)) {
+                // Tangkap apapun setelah CAMERA: sampai titik atau kata bahasa/audio
+                text = text.replace(/(CAMERA:\s*)(.*?)(?=\.|\s*LANGUAGE|\s*AUDIO|$)/i, function(match, p1, p2) {
+                    // Bersihkan jika sudah pernah di-convert agar tidak double
+                    let cleanP2 = p2.replace(/Static tripod,\s*no panning,\s*no zooming,\s*/gi, '');
+                    return `CAMERA: Static tripod, no panning, no zooming, ${cleanP2}`;
+                });
+            } else {
+                // Jika tidak ada kata CAMERA, tambahkan di akhir sebelum LANGUAGE jika ada
+                if (/LANGUAGE:/i.test(text)) {
+                     text = text.replace(/(LANGUAGE:)/i, 'CAMERA: Static tripod, no panning, no zooming, High quality. $1');
+                } else {
+                     text += " CAMERA: Static tripod, no panning, no zooming, High quality.";
+                }
+            }
+
+            // 5. Merapikan struktur kalimat (Titik untuk memisahkan bagian)
+            // Memisahkan Background
+            text = text.replace(/shallow depth of field,\s*(.*?),\s*features:/i, 'shallow depth of field. Background: $1, ');
+            
+            // Memisahkan Lighting
+            text = text.replace(/(Soft natural daylight.*?),\s*even lighting/i, '. Lighting: $1, even lighting');
+            
+            // Memisahkan Outfit (mencari pola setelah palette sampai Quiet/Mood)
+            text = text.replace(/(palette of beige\/cream\/wood tones with muted blues and greens,)\s*(.*?)(?=,\s*Quiet|\.\s*Quiet|Quiet)/i, '$1 Outfit: $2. ');
+            
+            // Memisahkan Mood
+            text = text.replace(/Quiet, sincere documentary interview mood\./i, 'Mood: Quiet, sincere documentary interview mood.');
+
+            // Memisahkan Negative Prompts
+            if (/no text, no subtitles/i.test(text) && !/Negative Prompts:/i.test(text)) {
+                text = text.replace(/(no text, no subtitles.*?text-free frame\.)/i, 'Negative Prompts: $1');
+            }
+
+            // Memisahkan Audio Characteristics
+            if (/(Audio:\s*deep and raspy)/i.test(text)) {
+                text = text.replace(/Audio:\s*(deep and raspy.*?)(?=\s*Dialogue:)/i, 'Audio characteristics: $1. ');
+            }
+
+            // Membersihkan spasi ganda dan titik koma yang berantakan
+            text = text.replace(/\s{2,}/g, ' ');
+            text = text.replace(/,\s*\./g, '.');
+            text = text.replace(/\.\s*\./g, '.');
+
+            outputEl.value = text;
+        }
+
+        function copyToClipboard() {
+            const outputEl = document.getElementById('outputPrompt');
+            
+            if (!outputEl.value.trim() || outputEl.value.includes("Peringatan:")) {
+                return; // Jangan copy jika kosong atau ada error
+            }
+
+            // Fallback untuk iframe yang tidak mendukung navigator.clipboard
+            outputEl.select();
+            outputEl.setSelectionRange(0, 99999); // Untuk mobile
+            
+            try {
+                document.execCommand('copy');
+                showToast();
+            } catch (err) {
+                console.error('Gagal meng-copy teks', err);
+                // Metode alternatif jika execCommand gagal
+                navigator.clipboard.writeText(outputEl.value).then(showToast).catch(e => console.error(e));
+            }
+            
+            // Hilangkan seleksi teks setelah copy
+            window.getSelection().removeAllRanges();
+        }
+
+        function showToast() {
+            const toast = document.getElementById('toast');
+            toast.style.opacity = '1';
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+            }, 2500);
+        }
+    </script>
+</body>
+</html>
