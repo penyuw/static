@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Veo 3 Static Camera</title>
+    <meta name="robots" content="noindex, nofollow">
+    <title>Veo 3 Static Prompt Converter</title>
     <script src="https://cdn.tailwindcss.com"></script>
-  <meta name="robots" content="noindex">
     <style>
         /* Custom Toast Animation */
         .toast-enter {
@@ -97,8 +97,17 @@
 
             // --- PROSES KONVERSI LOGIC ---
 
+            // 0. Ekstrak dan simpan bagian Dialogue agar tidak ikut terformat/berubah
+            let dialoguePart = "";
+            const dialogueRegex = /Dialogue:[\s\S]*$/i; // Menangkap mulai dari "Dialogue:" sampai akhir teks
+            const matchDialogue = text.match(dialogueRegex);
+            if (matchDialogue) {
+                dialoguePart = matchDialogue[0];
+                text = text.replace(dialogueRegex, '').trim(); // Hapus sementara dari teks utama
+            }
+
             // 1. Hapus kata "Cinematic," di awal jika ada (case insensitive)
-            text = text.replace(/Cinematic,\s*/gi, '');
+            text = text.replace(/^Cinematic,\s*/i, '');
 
             // 2. Tambahkan prefix Static Tripod di awal (jika belum ada)
             if (!/Static tripod shot/i.test(text)) {
@@ -128,17 +137,25 @@
             }
 
             // 5. Merapikan struktur kalimat (Titik untuk memisahkan bagian)
-            // Memisahkan Background
-            text = text.replace(/shallow depth of field,\s*(.*?),\s*features:/i, 'shallow depth of field. Background: $1, ');
+            // Memisahkan Background (Mencegah duplikasi jika diklik 2x)
+            if (!/Background:/i.test(text)) {
+                text = text.replace(/shallow depth of field,\s*(.*?),\s*features:/i, 'shallow depth of field. Background: $1, ');
+            }
             
-            // Memisahkan Lighting
-            text = text.replace(/(Soft natural daylight.*?),\s*even lighting/i, '. Lighting: $1, even lighting');
+            // Memisahkan Lighting (Mencegah duplikasi jika diklik 2x)
+            if (!/Lighting:/i.test(text)) {
+                text = text.replace(/(Soft natural daylight.*?),\s*even lighting/i, '. Lighting: $1, even lighting');
+            }
             
-            // Memisahkan Outfit (mencari pola setelah palette sampai Quiet/Mood)
-            text = text.replace(/(palette of beige\/cream\/wood tones with muted blues and greens,)\s*(.*?)(?=,\s*Quiet|\.\s*Quiet|Quiet)/i, '$1 Outfit: $2. ');
+            // Memisahkan Outfit (Mencegah duplikasi jika diklik 2x)
+            if (!/Outfit:/i.test(text)) {
+                text = text.replace(/(palette of beige\/cream\/wood tones with muted blues and greens,)\s*(.*?)(?=,\s*Quiet|\.\s*Quiet|Quiet)/i, '$1 Outfit: $2. ');
+            }
             
-            // Memisahkan Mood
-            text = text.replace(/Quiet, sincere documentary interview mood\./i, 'Mood: Quiet, sincere documentary interview mood.');
+            // Memisahkan Mood (Mencegah duplikasi jika diklik 2x)
+            if (!/Mood:/i.test(text)) {
+                text = text.replace(/Quiet, sincere documentary interview mood\./i, 'Mood: Quiet, sincere documentary interview mood.');
+            }
 
             // Memisahkan Negative Prompts
             if (/no text, no subtitles/i.test(text) && !/Negative Prompts:/i.test(text)) {
@@ -147,13 +164,22 @@
 
             // Memisahkan Audio Characteristics
             if (/(Audio:\s*deep and raspy)/i.test(text)) {
-                text = text.replace(/Audio:\s*(deep and raspy.*?)(?=\s*Dialogue:)/i, 'Audio characteristics: $1. ');
+                // Menghapus titik buatan di sini, karena teks "clear speech." sudah membawa titik aslinya
+                text = text.replace(/Audio:\s*(deep and raspy.*?)(?=\s*$)/i, 'Audio characteristics: $1');
             }
 
-            // Membersihkan spasi ganda dan titik koma yang berantakan
-            text = text.replace(/\s{2,}/g, ' ');
-            text = text.replace(/,\s*\./g, '.');
-            text = text.replace(/\.\s*\./g, '.');
+            // Membersihkan spasi ganda dan titik koma yang berantakan (Aman untuk ellipses "...")
+            text = text.replace(/\s{2,}/g, ' '); // Menghapus spasi ganda
+            text = text.replace(/,\s*\./g, '.'); // Memperbaiki koma yang bertemu titik
+            text = text.replace(/\.\s+\./g, '. '); // Hanya memperbaiki titik-spasi-titik menjadi 1 titik, tanpa merusak ...
+            text = text.replace(/([^\.])\.\.(?!\.)/g, '$1.'); // Memperbaiki dua titik yang berdempetan (..) menjadi 1 titik, tapi amankan elipsis (...)
+
+            text = text.trim();
+
+            // 6. Gabungkan kembali bagian Dialogue yang utuh
+            if (dialoguePart) {
+                text = text + (text.endsWith('.') ? " " : ". ") + dialoguePart;
+            }
 
             outputEl.value = text;
         }
